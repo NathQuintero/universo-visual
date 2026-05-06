@@ -30,11 +30,13 @@ class Client extends Model
         'address',
         'birth_date',
         'whatsapp_authorized',
+        'birthday_greeted_at',
         'notes',
     ];
 
     protected $casts = [
         'birth_date' => 'date',
+        'birthday_greeted_at' => 'date',
         'whatsapp_authorized' => 'boolean',
     ];
 
@@ -116,6 +118,12 @@ class Client extends Model
     {
         if (!$this->birth_date) return false;
         return $this->birth_date->format('m-d') === Carbon::today()->format('m-d');
+    }
+
+    /** Ya fue felicitado este año */
+    public function wasGreetedThisYear(): bool
+    {
+        return $this->birthday_greeted_at && $this->birthday_greeted_at->year === now()->year;
     }
 
     /** Días hasta su próximo cumpleaños */

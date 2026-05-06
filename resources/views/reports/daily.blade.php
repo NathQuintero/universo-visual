@@ -15,7 +15,7 @@
     </p>
 
     {{-- Tarjetas resumen --}}
-    <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:22px">
+    <div class="stats" style="margin-bottom:22px">
         <div class="stat s-blue" style="text-align:center;padding:22px">
             <div style="font-size:26px;margin-bottom:6px">📋</div>
             <div class="stat-val">{{ $summary['works_created'] }}</div>

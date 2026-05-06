@@ -61,6 +61,7 @@
             <div class="stat-label">Demorados</div>
         </div>
         
+        @if(Auth::user()->isAdmin())
         <div class="stat s-purple">
             <div class="stat-top">
                 <div class="stat-icon">💰</div>
@@ -68,6 +69,7 @@
             <div class="stat-val">${{ number_format($stats['monthly_income'] / 1000, 0, ',', '.') }}K</div>
             <div class="stat-label">Ingresos del Mes</div>
         </div>
+        @endif
     </div>
 
     {{-- =============================================
@@ -171,18 +173,26 @@
                                         @endif
                                     </p>
                                 </div>
-                                @if($client->phone && $client->whatsapp_authorized)
+                                @if($client->wasGreetedThisYear())
+                                    <span class="bi-btn" style="background:#16a34a;cursor:default;opacity:0.85">Felicitado</span>
+                                @elseif($client->phone && $client->whatsapp_authorized)
                                     @php
-                                    $msgCumple = "Hola " . $client->first_name . "!\n\n"
-                                        . "Hoy es un dia muy especial!! Desde Optica Universo Visual queremos desearte un muy Feliz Cumpleaños! " . "\n\n"
-                                        . "Que Dios te bendiga grandemente, te llene de salud, amor y muchas bendiciones en este nuevo año de vida. " . "\n\n"
-                                        . "Para celebrar contigo, te regalamos un 15% de descuento en tu proxima compra, valido por dos días desde tu cumpleaños" . "\n\n"
-                                        . "Ven a visitarnos y estrena con estilo! Te esperamos con los brazos abiertos." . "\n\n"
+                                    $waPhone = '57' . preg_replace('/[^0-9]/', '', $client->phone);
+                                    $msgCumple = "Hola " . $client->first_name . ",\n\n"
+                                        . "Hoy es un dia muy especial. Desde Optica Universo Visual queremos desearte un muy feliz cumpleanos.\n\n"
+                                        . "Que Dios te bendiga grandemente, te llene de salud, amor y muchas bendiciones en este nuevo ano de vida.\n\n"
+                                        . "\"Porque yo se los planes que tengo para ustedes, planes de bienestar y no de calamidad, a fin de darles un futuro y una esperanza.\" - Jeremias 29:11\n\n"
+                                        . "Para celebrar contigo, te regalamos un 15% de descuento en tu proxima compra.";
+                                    if ($client->email) {
+                                        $msgCumple .= " Revisa tu correo (" . $client->email . "), te enviamos un obsequio especial.";
+                                    }
+                                    $msgCumple .= " Este descuento tiene vigencia desde tu cumpleanos hasta 10 dias despues.\n\n"
                                         . "Con carino,\n"
                                         . "Tu familia de Optica Universo Visual\n"
-                                        . "C.C. La Isla, Bucaramanga";
+                                        . "Centro Comercial La Isla, Bucaramanga";
                                     @endphp
-                                       target="_blank" class="bi-btn">💬 Felicitar</a>
+                                    <a href="https://wa.me/{{ $waPhone }}?text={{ rawurlencode($msgCumple) }}"
+                                       target="_blank" class="bi-btn">Felicitar</a>
                                 @endif
                             </div>
                         @endforeach
@@ -196,7 +206,8 @@
                     <h3>📊 Resumen — Hoy</h3>
                 </div>
                 <div class="card-b">
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+                    @php $isAdmin = Auth::user()->isAdmin(); @endphp
+                    <div style="display:grid;grid-template-columns:repeat({{ $isAdmin ? 3 : 2 }},1fr);gap:10px;text-align:center">
                         <div>
                             <div style="font-size:24px;font-weight:800;font-family:'JetBrains Mono';color:var(--blue)">
                                 {{ $todaySummary['works_created'] }}
@@ -209,12 +220,14 @@
                             </div>
                             <div style="font-size:11px;color:var(--text-muted)">Entregados</div>
                         </div>
+                        @if($isAdmin)
                         <div>
                             <div style="font-size:24px;font-weight:800;font-family:'JetBrains Mono';color:var(--purple)">
                                 ${{ number_format($todaySummary['today_income'] / 1000, 0, ',', '.') }}K
                             </div>
                             <div style="font-size:11px;color:var(--text-muted)">Ingresos</div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>

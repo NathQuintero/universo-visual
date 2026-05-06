@@ -29,6 +29,7 @@ class Work extends Model
         'laboratory_id',
         'formula_id',
         'user_id',
+        'employee_id',
         'status',
         'frame_type',
         'frame_brand',
@@ -43,6 +44,8 @@ class Work extends Model
         'price_frame',
         'price_consultation',
         'price_total',
+        'lab_cost',
+        'lab_paid_at',
         'is_urgent',
         'is_vip',
         'is_warranty',
@@ -61,10 +64,12 @@ class Work extends Model
         'is_warranty' => 'boolean',
         'estimated_delivery' => 'date',
         'actual_delivery' => 'date',
+        'lab_paid_at' => 'date',
         'price_lenses' => 'decimal:2',
         'price_frame' => 'decimal:2',
         'price_consultation' => 'decimal:2',
         'price_total' => 'decimal:2',
+        'lab_cost' => 'decimal:2',
     ];
 
     // ==========================================
@@ -93,6 +98,12 @@ class Work extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Empleada (vendedora física) que atendió esta venta */
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     /** Todos los pagos/abonos de este trabajo */
@@ -148,6 +159,66 @@ class Work extends Model
         if (!$lastChange) return $this->days_elapsed > 5;
         
         return Carbon::parse($lastChange->created_at)->diffInDays(Carbon::today()) > 5;
+    }
+
+    // ==========================================
+    // PAGOS AL LABORATORIO
+    // ==========================================
+    //
+    // Reglas del negocio:
+    //  - El reloj arranca cuando el lab nos entrega el lente (status=received).
+    //  - Si nunca llegó al estado received, no hay deuda con el lab todavía.
+    //  - Política interna: pagar cada 15 días (lab nos da plazo de 30).
+    //  - Estados: paid | due_soon (12-14d) | due (15-29d) | overdue (>=30d).
+
+    /** Fecha en la que el lab nos entregó el lente (cambio a 'received'). */
+    public function getLabReceivedAtAttribute(): ?Carbon
+    {
+        $change = $this->statusChanges
+            ->where('to_status', 'received')
+            ->sortBy('created_at')
+            ->first();
+
+        return $change ? Carbon::parse($change->created_at) : null;
+    }
+
+    /** Días que llevamos debiéndole al lab por este lente (null si no se recibió aún). */
+    public function getDaysOwedToLabAttribute(): ?int
+    {
+        $start = $this->lab_received_at;
+        if (!$start) return null;
+        $end = $this->lab_paid_at ? Carbon::parse($this->lab_paid_at) : Carbon::today();
+        return (int) $start->startOfDay()->diffInDays($end->startOfDay(), false);
+    }
+
+    /** ¿Ya le pagamos al lab por este lente? */
+    public function getIsLabPaidAttribute(): bool
+    {
+        return $this->lab_paid_at !== null;
+    }
+
+    /**
+     * Estado del pago al lab:
+     *   - 'paid'      : ya pagado
+     *   - 'pending'   : recibido pero aún en plazo cómodo (<12 días)
+     *   - 'due_soon'  : faltan menos de 3 días para los 15
+     *   - 'due'       : ya pasaron los 15 días pero aún en plazo del lab (<30)
+     *   - 'overdue'   : pasaron los 30 días → urgente, pasó el plazo del lab
+     *   - 'not_received' : el lab aún no nos ha entregado el lente
+     *   - 'cancelled' : trabajo cancelado, no aplica
+     */
+    public function getLabPaymentStatusAttribute(): string
+    {
+        if ($this->status === 'cancelled') return 'cancelled';
+        if ($this->is_lab_paid) return 'paid';
+
+        $days = $this->days_owed_to_lab;
+        if ($days === null) return 'not_received';
+
+        if ($days >= 30) return 'overdue';
+        if ($days >= 15) return 'due';
+        if ($days >= 12) return 'due_soon';
+        return 'pending';
     }
 
     /** ¿Está listo y sin recoger hace más de 3 días? */

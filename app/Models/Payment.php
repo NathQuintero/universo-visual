@@ -22,6 +22,7 @@ class Payment extends Model
     protected $fillable = [
         'work_id',
         'user_id',
+        'employee_id',
         'amount',
         'method',
         'notes',
@@ -45,6 +46,12 @@ class Payment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** Empleada (vendedora física) que recibió este pago */
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     // ==========================================

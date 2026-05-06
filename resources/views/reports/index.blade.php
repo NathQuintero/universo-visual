@@ -31,6 +31,9 @@
 @section('content')
     <div class="ph">
         <h2>📊 Reportes y Estadísticas</h2>
+        <div class="ph-acts">
+            <a href="{{ route('reports.export', request()->query()) }}" class="btn btn-g btn-sm">📥 Exportar Excel</a>
+        </div>
     </div>
 
     {{-- Filtros de fecha --}}
@@ -83,7 +86,7 @@
                     @php $height = ($month['amount'] / $maxIncome) * 100; @endphp
                     <div class="bar-col">
                         <div class="bar-val">${{ number_format($month['amount'] / 1000, 0) }}K</div>
-                        <div class="bar" style="height:{{ max($height, 4) }}%;background:var(--grad-blue);{{ $loop->last ? 'box-shadow:0 0 15px rgba(74,108,247,0.25)' : 'opacity:0.6' }}"></div>
+                        <div class="bar" style="height:{{ max($height, 4) }}%;background:var(--grad-blue);{{ $loop->last ? 'box-shadow:0 0 15px rgba(16,49,146,0.25)' : 'opacity:0.6' }}"></div>
                         <div class="bar-label">{{ $month['month'] }}</div>
                     </div>
                 @endforeach
@@ -127,6 +130,7 @@
     <div class="charts">
         <div class="chart-card">
             <h3>🏆 Top 5 Clientes</h3>
+            <div class="table-wrap">
             <table class="tbl">
                 <thead><tr><th>#</th><th>Cliente</th><th>Trabajos</th><th>Total Compras</th></tr></thead>
                 <tbody>
@@ -140,10 +144,12 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
 
         <div class="chart-card">
             <h3>🏭 Rendimiento de Laboratorios</h3>
+            <div class="table-wrap">
             <table class="tbl">
                 <thead><tr><th>Laboratorio</th><th>Trabajos</th><th>Prom. Entrega</th><th>Cumplimiento</th></tr></thead>
                 <tbody>
@@ -157,6 +163,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 @endsection

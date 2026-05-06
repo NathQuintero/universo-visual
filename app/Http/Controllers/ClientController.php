@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ClientsExport;
+use App\Mail\BirthdayGreetingMail;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Client;
 use App\Models\Formula;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Controlador: Gestión de Clientes
@@ -189,5 +193,46 @@ class ClientController extends Controller
     private function clientsWithPendingBalance(): int
     {
         return Client::all()->filter(fn($c) => $c->total_pending_balance > 0)->count();
+    }
+
+    /**
+     * Exportar clientes a Excel
+     * Ruta: GET /clientes/exportar
+     */
+    public function export()
+    {
+        $filename = 'Clientes_UniversoVisual_' . now()->format('Y-m-d') . '.xlsx';
+        return Excel::download(new ClientsExport(), $filename);
+    }
+
+    /**
+     * Enviar felicitación de cumpleaños por correo
+     * Ruta: POST /clientes/{client}/felicitar
+     */
+    public function sendBirthdayGreeting(Client $client)
+    {
+        // Marcar como felicitado (siempre, aunque no tenga email)
+        $client->update(['birthday_greeted_at' => now()]);
+
+        if (!$client->email) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Felicitación registrada (el cliente no tiene correo).',
+            ]);
+        }
+
+        try {
+            Mail::to($client->email)->send(new BirthdayGreetingMail($client));
+
+            return response()->json([
+                'success' => true,
+                'message' => "Felicitación enviada al correo {$client->email}",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => true,
+                'message' => "Felicitación registrada, pero no se pudo enviar el correo.",
+            ]);
+        }
     }
 }

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Employee;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Hash;
 
@@ -35,15 +36,21 @@ class DatabaseSeeder extends Seeder
             'phone' => '3001234567',
         ]);
 
-        // Usuario Vendedor (empleado de prueba)
+        // Cuenta compartida del personal de ventas (una sola tablet/PC).
+        // Las empleadas físicas (Maira, Nelly...) se gestionan en la tabla employees
+        // y se seleccionan al registrar cada venta o pago.
         User::create([
-            'name' => 'Camila Vargas',
-            'email' => 'vendedor@universovisual.com',
-            'password' => Hash::make('vendedor123'),
+            'name' => 'Trabajadoras',
+            'email' => 'trabajadora@universovisual.com',
+            'password' => Hash::make('trabajadora123'),
             'role' => 'seller',
             'is_active' => true,
             'phone' => '3109876543',
         ]);
+
+        // Empleadas iniciales (vendedoras físicas)
+        Employee::create(['name' => 'Maira', 'is_active' => true]);
+        Employee::create(['name' => 'Nelly', 'is_active' => true]);
 
         // =============================================
         // 2. CREAR CONFIGURACIÓN INICIAL

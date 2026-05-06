@@ -52,7 +52,7 @@
     .ts.done .ts-icon {
         background: var(--grad-blue);
         border-color: var(--blue);
-        box-shadow: 0 0 12px rgba(74,108,247,0.3);
+        box-shadow: 0 0 12px rgba(16,49,146,0.25);
     }
     .ts.now .ts-icon {
         background: var(--grad-warn);
@@ -131,7 +131,20 @@
     @media (max-width: 768px) {
         .igrid { grid-template-columns: 1fr; }
         .qr-section { flex-direction: column; text-align: center; }
-        .qr-actions { justify-content: center; }
+        .qr-actions { justify-content: center; flex-wrap: wrap; }
+        .timeline { overflow-x: auto; gap: 6px; justify-content: flex-start; padding: 16px 8px; }
+        .timeline::before { left: 20px; right: 20px; }
+        .ts-icon { width: 36px; height: 36px; font-size: 14px; }
+        .ts-lbl { font-size: 9px; }
+        .ts-date { font-size: 8px; }
+        .paybar { flex-wrap: wrap; gap: 10px; }
+        .pbi { min-width: 80px; }
+        .divider { display: none; }
+        .pb-val { font-size: 16px; }
+        .ftable { font-size: 11px; }
+        .ftable td { padding: 6px 4px; font-size: 12px; }
+        .ftable th { padding: 6px 4px; font-size: 9px; }
+        .ph-acts { flex-wrap: wrap; }
     }
 </style>
 @endsection
@@ -141,24 +154,63 @@
     <div class="ph">
         <h2>👓 {{ $work->tracking_code }}</h2>
         <div class="ph-acts">
-            @if($work->client->phone && $work->client->whatsapp_authorized)
-                <a href="https://wa.me/57{{ preg_replace('/[^0-9]/', '', $work->client->phone) }}?text={{ urlencode('¡Hola ' . $work->client->first_name . '! Te escribimos de Óptica Universo Visual sobre tu pedido ' . $work->tracking_code . '.') }}"
-                   target="_blank" class="btn btn-sm btn-g">💬 WhatsApp</a>
-            @endif
+            {{-- Descargar PDF --}}
             <a href="{{ route('pdf.work', $work) }}" class="btn btn-sm btn-v">📄 Descargar PDF</a>
+
+            {{-- Enviar recibo por correo --}}
+            @if($work->client->email)
+                <button type="button" class="btn btn-sm btn-p" id="btnEnviarEmail"
+                        onclick="enviarReciboPorCorreo()">
+                    📧 Enviar recibo por correo
+                </button>
+            @else
+                <button type="button" class="btn btn-sm btn-s" disabled
+                        title="El cliente no tiene correo registrado" style="opacity:0.5;cursor:not-allowed">
+                    📧 Sin correo registrado
+                </button>
+            @endif
+
+            {{-- Enviar por WhatsApp --}}
             @if($work->client->phone && $work->client->whatsapp_authorized)
                 @php
-                    $pdfUrl = route('pdf.work.public', $work);
-                    $msgPdf = "Hola " . $work->client->first_name . "!\n\n"
-                        . "Te compartimos el recibo de tu pedido " . $work->tracking_code . " en Optica Universo Visual.\n\n"
-                        . "Puedes verlo y descargarlo aqui:\n"
-                        . $pdfUrl . "\n\n"
-                        . "Si tienes alguna duda, estamos para ayudarte!";
+                    $waPhone = '57' . preg_replace('/[^0-9]/', '', $work->client->phone);
+                    $trackingLink = route('tracking', $work->tracking_code);
+
+                    if ($work->client->email) {
+                        // Cliente CON email: mencionar que se envió al correo
+                        $waMsg = "Hola " . $work->client->first_name . ",\n\n"
+                            . "Te saludamos desde *Optica Universo Visual*.\n\n"
+                            . "Te informamos que el numero de tu orden es: *" . $work->tracking_code . "*\n\n"
+                            . "Hemos enviado la factura con todos los detalles de tu pedido a tu correo electronico.\n\n"
+                            . "Tambien puedes consultar el estado de tu pedido en cualquier momento aqui:\n"
+                            . $trackingLink . "\n\n"
+                            . "Muchas gracias por visitarnos y confiar en nosotros.\n"
+                            . "Te esperamos pronto.\n\n"
+                            . "_Optica Universo Visual_\n"
+                            . "Centro Comercial La Isla, Bucaramanga";
+                    } else {
+                        // Cliente SIN email: adjuntar link al PDF
+                        $pdfUrl = route('pdf.work.public', $work);
+                        $waMsg = "Hola " . $work->client->first_name . ",\n\n"
+                            . "Te saludamos desde *Optica Universo Visual*.\n\n"
+                            . "Te informamos que el numero de tu orden es: *" . $work->tracking_code . "*\n\n"
+                            . "Adjuntamos el recibo de tu pedido, puedes verlo aqui:\n"
+                            . $pdfUrl . "\n\n"
+                            . "Tambien puedes consultar el estado de tu pedido en cualquier momento aqui:\n"
+                            . $trackingLink . "\n\n"
+                            . "Muchas gracias por visitarnos y confiar en nosotros.\n"
+                            . "Te esperamos pronto.\n\n"
+                            . "_Optica Universo Visual_\n"
+                            . "Centro Comercial La Isla, Bucaramanga";
+                    }
                 @endphp
-                <a href="https://wa.me/57{{ preg_replace('/[^0-9]/', '', $work->client->phone) }}?text={{ rawurlencode($msgPdf) }}"
-                target="_blank" class="btn btn-sm btn-g">📄 Enviar Recibo por WhatsApp</a>
+                <a href="https://wa.me/{{ $waPhone }}?text={{ rawurlencode($waMsg) }}"
+                   target="_blank" class="btn btn-sm btn-g">
+                    💬 Enviar por WhatsApp
+                </a>
             @endif
-            <a href="{{ route('works.edit', $work) }}" class="btn btn-sm btn-s">✏️ Editar Trabajo</a>
+
+            <a href="{{ route('works.edit', $work) }}" class="btn btn-sm btn-s">✏️ Editar</a>
             <a href="{{ route('tracking', $work->tracking_code) }}" target="_blank" class="btn btn-sm btn-s">🔍 Ver como cliente</a>
             <a href="{{ route('works.index') }}" class="btn btn-sm btn-s">← Volver</a>
         </div>
@@ -198,7 +250,7 @@
          ============================================= --}}
     @if(!in_array($work->status, ['delivered']))
         <form action="{{ route('works.updateStatus', $work) }}" method="POST"
-              style="display:flex;align-items:center;gap:9px;margin-bottom:20px;padding:12px;background:var(--bg-card);border-radius:var(--r-md);border:1px solid var(--border)">
+              style="display:flex;align-items:center;gap:9px;margin-bottom:20px;padding:12px;background:var(--bg-card);border-radius:var(--r-md);border:1px solid var(--border);flex-wrap:wrap">
             @csrf
             @method('PATCH')
             <span style="font-size:13px;font-weight:600">Cambiar estado a:</span>
@@ -282,8 +334,9 @@
     </div>
 
     {{-- Formulario de abono (oculto hasta que presionan el botón) --}}
+    @php $activeEmployees = \App\Models\Employee::where('is_active', true)->orderBy('name')->get(); @endphp
     <form id="paymentForm" action="{{ route('works.storePayment', $work) }}" method="POST"
-          style="display:none;align-items:center;gap:9px;margin-bottom:20px;padding:12px;background:var(--bg-card);border-radius:var(--r-md);border:1px solid var(--border)">
+          style="display:none;flex-wrap:wrap;align-items:center;gap:9px;margin-bottom:20px;padding:12px;background:var(--bg-card);border-radius:var(--r-md);border:1px solid var(--border)">
         @csrf
         <span style="font-size:13px;font-weight:600">💰 Nuevo abono:</span>
         <input name="amount" type="number" class="combo" style="width:140px;min-width:auto" placeholder="Monto..." required>
@@ -294,6 +347,12 @@
             <option value="nequi">📱 Nequi</option>
             <option value="daviplata">📱 Daviplata</option>
             <option value="other">Otro</option>
+        </select>
+        <select name="employee_id" class="combo" style="min-width:160px" required>
+            <option value="">— ¿Quién recibió? —</option>
+            @foreach($activeEmployees as $emp)
+                <option value="{{ $emp->id }}" {{ $work->employee_id == $emp->id ? 'selected' : '' }}>👩‍💼 {{ $emp->name }}</option>
+            @endforeach
         </select>
         <input name="notes" class="combo" style="flex:1;min-width:auto" placeholder="Nota (opcional)">
         <button type="submit" class="btn btn-sm btn-g">✅ Registrar</button>
@@ -311,7 +370,8 @@
             <div class="irow"><span class="lbl">Cédula</span><span class="val">{{ $work->client->document_number }}</span></div>
             <div class="irow"><span class="lbl">Teléfono</span><span class="val">{{ $work->client->phone ?? '—' }}</span></div>
             <div class="irow"><span class="lbl">WhatsApp</span><span class="val" style="color:{{ $work->client->whatsapp_authorized ? 'var(--green)' : 'var(--red)' }}">{{ $work->client->whatsapp_authorized ? '✅ Autorizado' : '❌ No autorizado' }}</span></div>
-            <div class="irow"><span class="lbl">Creado por</span><span class="val">{{ $work->user->name }}</span></div>
+            <div class="irow"><span class="lbl">Atendió la venta</span><span class="val" style="color:var(--blue);font-weight:700">👩‍💼 {{ $work->employee->name ?? 'No registrada' }}</span></div>
+            <div class="irow"><span class="lbl">Creado en sistema</span><span class="val" style="color:var(--text-muted);font-size:12px">{{ $work->created_at->format('d/m/Y H:i') }}</span></div>
         </div>
 
         {{-- Info del lente --}}
@@ -375,14 +435,15 @@
         <div class="isec" style="margin-bottom:20px">
             <h4>💰 Historial de Pagos</h4>
             <table class="ftable" style="text-align:left">
-                <thead><tr><th style="text-align:left">Fecha</th><th style="text-align:left">Monto</th><th style="text-align:left">Método</th><th style="text-align:left">Registró</th><th style="text-align:left">Nota</th><th style="text-align:center">Acción</th></tr></thead>
+                <thead><tr><th style="text-align:left">Fecha</th><th style="text-align:left">Monto</th><th style="text-align:left">Método</th><th style="text-align:left">Recibió</th><th style="text-align:left">Nota</th><th style="text-align:center">Acción</th></tr></thead>
                 <tbody>
                     @foreach($work->payments as $payment)
+                        @php $payment->loadMissing('employee'); @endphp
                         <tr>
                             <td style="color:var(--text-secondary);font-size:12px">{{ $payment->created_at->format('d/m/Y H:i') }}</td>
                             <td style="color:var(--green);font-weight:700">${{ number_format($payment->amount, 0, ',', '.') }}</td>
                             <td style="font-size:12px">{{ $payment->method_name }}</td>
-                            <td style="font-size:12px;color:var(--text-secondary)">{{ $payment->user->name }}</td>
+                            <td style="font-size:12px;color:var(--text-secondary)">{{ $payment->employee->name ?? '—' }}</td>
                             <td style="font-size:12px;color:var(--text-muted)">{{ $payment->notes ?? '—' }}</td>
                             <td style="text-align:center">
                                 <form action="{{ route('works.destroyPayment', [$work, $payment]) }}" method="POST" 
@@ -415,4 +476,77 @@
             </div>
         @endforeach
     </div>
+@endsection
+
+@section('scripts')
+<script>
+    function enviarReciboPorCorreo() {
+        const btn = document.getElementById('btnEnviarEmail');
+        const textoOriginal = btn.innerHTML;
+
+        btn.innerHTML = '⏳ Enviando...';
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+
+        fetch('{{ route("works.sendReceipt", $work) }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok && data.success) {
+                btn.innerHTML = '✅ Enviado';
+                btn.style.opacity = '1';
+                // Mostrar notificación de éxito
+                mostrarNotificacion(data.message, 'success');
+                setTimeout(() => { btn.innerHTML = textoOriginal; btn.disabled = false; }, 3000);
+            } else {
+                btn.innerHTML = '❌ Error';
+                btn.style.opacity = '1';
+                mostrarNotificacion(data.message || 'Error al enviar el correo', 'error');
+                setTimeout(() => { btn.innerHTML = textoOriginal; btn.disabled = false; }, 3000);
+            }
+        })
+        .catch(() => {
+            btn.innerHTML = '❌ Error';
+            btn.style.opacity = '1';
+            mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            setTimeout(() => { btn.innerHTML = textoOriginal; btn.disabled = false; }, 3000);
+        });
+    }
+
+    function mostrarNotificacion(mensaje, tipo) {
+        const existing = document.querySelector('.ajax-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'ajax-toast';
+        toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;padding:14px 22px;border-radius:12px;font-family:Outfit,sans-serif;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,0.15);animation:slideD .4s ease;max-width:400px;';
+
+        if (tipo === 'success') {
+            toast.style.background = '#dcfce7';
+            toast.style.border = '1px solid #86efac';
+            toast.style.borderLeft = '4px solid #16a34a';
+            toast.style.color = '#155724';
+            toast.innerHTML = '✅ ' + mensaje;
+        } else {
+            toast.style.background = '#fee2e2';
+            toast.style.border = '1px solid #fca5a5';
+            toast.style.borderLeft = '4px solid #dc2626';
+            toast.style.color = '#721c24';
+            toast.innerHTML = '❌ ' + mensaje;
+        }
+
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            toast.style.transition = 'all .3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+</script>
 @endsection

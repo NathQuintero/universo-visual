@@ -35,12 +35,31 @@
                                placeholder="Escribe nombre o cédula..."
                                value="{{ $selectedClient ? $selectedClient->full_name . ' — CC ' . $selectedClient->document_number : old('client_name', '') }}"
                                style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;color:var(--text-primary);font-family:'Outfit';font-size:13.5px;outline:none">
-                        <div id="clientResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:999;background:var(--bg-card);border:1px solid var(--blue);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
+                        <div id="clientResults" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:999;background:var(--bg-card);border:1px solid var(--blue);border-radius:0 0 var(--r) var(--r);max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(16,49,146,0.15)"></div>
                         @error('client_id') <span class="field-error">{{ $message }}</span> @enderror
                     </div>
                     <div class="fg">
                         <label>¿Cliente nuevo?</label>
                         <a href="{{ route('clients.create') }}" class="btn btn-sm btn-s" style="margin-top:4px">➕ Crear cliente primero</a>
+                    </div>
+                </div>
+
+                {{-- Vendedora encargada (Maira / Nelly / ...) --}}
+                <div class="frow">
+                    <div class="fg">
+                        <label>👩‍💼 ¿Quién atiende esta venta? *</label>
+                        <select name="employee_id" required>
+                            <option value="">— Selecciona la trabajadora —</option>
+                            @foreach($employees as $emp)
+                                <option value="{{ $emp->id }}" {{ old('employee_id') == $emp->id ? 'selected' : '' }}>
+                                    {{ $emp->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('employee_id') <span class="field-error">{{ $message }}</span> @enderror
+                        @if($employees->isEmpty())
+                            <p class="field-error">⚠️ Aún no hay trabajadoras registradas. Pídele al admin que las agregue en /trabajadoras.</p>
+                        @endif
                     </div>
                 </div>
 
@@ -66,7 +85,7 @@
                 <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">OD = Ojo Derecho | OI = Ojo Izquierdo</p>
                 
                 {{-- OD --}}
-                <div style="display:grid;grid-template-columns:50px 1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="display:grid;grid-template-columns:50px 1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;overflow-x:auto">
                     <div style="display:flex;align-items:center;font-weight:700;color:var(--cyan);font-size:14px">OD</div>
                     <div class="fg"><label>Esfera</label><input name="od_sphere" type="number" step="0.25" value="{{ old('od_sphere') }}" placeholder="-2.25"></div>
                     <div class="fg"><label>Cilindro</label><input name="od_cylinder" type="number" step="0.25" value="{{ old('od_cylinder') }}" placeholder="-0.75"></div>
@@ -76,7 +95,7 @@
                 </div>
 
                 {{-- OI --}}
-                <div style="display:grid;grid-template-columns:50px 1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="display:grid;grid-template-columns:50px 1fr 1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px;overflow-x:auto">
                     <div style="display:flex;align-items:center;font-weight:700;color:var(--purple);font-size:14px">OI</div>
                     <div class="fg"><label>Esfera</label><input name="oi_sphere" type="number" step="0.25" value="{{ old('oi_sphere') }}" placeholder="-1.75"></div>
                     <div class="fg"><label>Cilindro</label><input name="oi_cylinder" type="number" step="0.25" value="{{ old('oi_cylinder') }}" placeholder="-0.50"></div>
@@ -85,7 +104,7 @@
                     <div class="fg"><label>DNP</label><input name="oi_dnp" type="number" step="0.5" value="{{ old('oi_dnp') }}" placeholder="31"></div>
                 </div>
 
-                <div class="fg" style="max-width:200px">
+                <div class="fg" style="max-width:280px">
                     <label>Fecha del examen</label>
                     <input name="exam_date" type="date" value="{{ old('exam_date', date('Y-m-d')) }}">
                 </div>
@@ -181,6 +200,13 @@
                 </div>
                 <div class="frow">
                     <div class="fg">
+                        <label>🏭 Costo del lente (lo que cobra el laboratorio)</label>
+                        <input name="lab_cost" type="number" step="1" min="0" value="{{ old('lab_cost', 0) }}" placeholder="80000">
+                        <p style="font-size:11px;color:var(--text-muted);margin-top:4px">Cuánto le pagaremos al laboratorio por este lente cuando nos lo entregue.</p>
+                    </div>
+                </div>
+                <div class="frow">
+                    <div class="fg">
                         <label>Abono inicial ($)</label>
                         <input name="initial_payment" type="number" step="1" value="{{ old('initial_payment') }}" placeholder="200000">
                     </div>
@@ -208,7 +234,7 @@
                     <label style="display:flex;align-items:center;gap:5px;background:rgba(255,193,7,0.06);padding:7px 12px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid rgba(255,193,7,0.15);color:var(--yellow)">
                         <input type="checkbox" name="is_vip" value="1" {{ old('is_vip') ? 'checked' : '' }}> ⭐ VIP
                     </label>
-                    <label style="display:flex;align-items:center;gap:5px;background:rgba(124,91,245,0.06);padding:7px 12px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid rgba(124,91,245,0.15);color:var(--purple)">
+                    <label style="display:flex;align-items:center;gap:5px;background:rgba(26,79,208,0.06);padding:7px 12px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid rgba(26,79,208,0.15);color:var(--purple)">
                         <input type="checkbox" name="is_warranty" value="1" {{ old('is_warranty') ? 'checked' : '' }}> 🔄 Garantía
                     </label>
                 </div>

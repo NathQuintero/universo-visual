@@ -42,13 +42,16 @@
     <div class="ph">
         <h2>👥 Gestión de Clientes</h2>
         <div class="ph-acts">
+            @if(Auth::user()->isAdmin())
+                <a href="{{ route('clients.export') }}" class="btn btn-g btn-sm">📥 Exportar Excel</a>
+            @endif
             <a href="{{ route('clients.create') }}" class="btn btn-p">➕ Nuevo Cliente</a>
         </div>
     </div>
 
     {{-- Filtros --}}
     <div class="filters-row">
-        <form action="{{ route('clients.index') }}" method="GET" class="search-box" style="width:300px">
+        <form action="{{ route('clients.index') }}" method="GET" class="search-box" style="width:100%;max-width:300px">
             <span>🔍</span>
             <input name="search" placeholder="Buscar por nombre, cédula o teléfono..." value="{{ request('search') }}">
         </form>
@@ -69,7 +72,7 @@
     </div>
 
     {{-- Estadísticas --}}
-    <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+    <div class="stats" style="margin-bottom:18px">
         <div class="stat s-blue"><div class="stat-val">{{ $stats['total'] }}</div><div class="stat-label">Total Clientes</div></div>
         <div class="stat s-green"><div class="stat-val">{{ $stats['new_this_month'] }}</div><div class="stat-label">Nuevos este Mes</div></div>
         <div class="stat s-yellow"><div class="stat-val">{{ $stats['with_active_works'] }}</div><div class="stat-label">Con Trabajos Activos</div></div>
@@ -78,6 +81,7 @@
 
     {{-- Tabla de clientes --}}
     <div class="card">
+        <div class="table-wrap">
         <table class="tbl">
             <thead>
                 <tr>
@@ -168,7 +172,8 @@
                                 @if($client->works->count() > 0)
                                     <div class="isec" style="margin-bottom:14px">
                                         <h4>📋 Historial de Trabajos</h4>
-                                        <table class="tbl" style="font-size:12px">
+                                        <div class="table-wrap">
+                                        <table class="tbl" style="font-size:12px;min-width:500px">
                                             <thead><tr><th>Código</th><th>Fecha</th><th>Tipo</th><th>Lab</th><th>Estado</th><th>Total</th></tr></thead>
                                             <tbody>
                                                 @foreach($client->works as $work)
@@ -183,11 +188,12 @@
                                                 @endforeach
                                             </tbody>
                                         </table>
+                                        </div>
                                     </div>
                                 @endif
 
                                 {{-- Botones de acción --}}
-                                <div style="display:flex;gap:8px">
+                                <div style="display:flex;gap:8px;flex-wrap:wrap">
                                     <a href="{{ route('works.create', ['client_id' => $client->id]) }}" class="btn btn-sm btn-p" onclick="event.stopPropagation()">➕ Nuevo Trabajo</a>
                                     @if($client->phone && $client->whatsapp_authorized)
                                         <a href="https://wa.me/57{{ preg_replace('/[^0-9]/', '', $client->phone) }}" target="_blank" class="btn btn-sm btn-g" onclick="event.stopPropagation()">💬 WhatsApp</a>
@@ -206,6 +212,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 
     {{-- Paginación --}}

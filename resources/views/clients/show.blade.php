@@ -103,7 +103,8 @@
     @if($client->formulas->count() > 1)
         <div class="isec" style="margin-bottom:20px">
             <h4>📈 Evolución Visual ({{ $client->formulas->count() }} fórmulas)</h4>
-            <table class="ftable" style="text-align:left">
+            <div class="table-wrap">
+            <table class="ftable" style="text-align:left;min-width:500px">
                 <thead>
                     <tr>
                         <th style="text-align:left">Fecha</th>
@@ -129,6 +130,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     @endif
 
@@ -136,7 +138,8 @@
     <div class="isec">
         <h4>📋 Historial de Trabajos ({{ $client->works->count() }})</h4>
         @if($client->works->count() > 0)
-            <table class="tbl" style="font-size:13px">
+            <div class="table-wrap">
+            <table class="tbl" style="font-size:13px;min-width:600px">
                 <thead><tr><th>Código</th><th>Fecha</th><th>Tipo Lente</th><th>Laboratorio</th><th>Estado</th><th>Total</th><th>Saldo</th></tr></thead>
                 <tbody>
                     @foreach($client->works as $work)
@@ -154,6 +157,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         @else
             <p style="text-align:center;padding:20px;color:var(--text-muted)">Este cliente no tiene trabajos aún.</p>
         @endif

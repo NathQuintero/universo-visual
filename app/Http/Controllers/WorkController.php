@@ -4,12 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Work;
 use App\Models\Client;
+use App\Models\Employee;
 use App\Models\Formula;
 use App\Models\Laboratory;
 use App\Models\Payment;
 use App\Models\WorkStatusChange;
+use App\Exports\WorksExport;
+use App\Mail\WorkReceiptMail;
+use App\Mail\WorkStatusUpdateMail;
+use App\Services\WorkImportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Controlador: Gestión de Trabajos
@@ -76,14 +83,15 @@ class WorkController extends Controller
     {
         $laboratories = Laboratory::where('is_active', true)->get();
         $clients = Client::orderBy('first_name')->get();
-        
+        $employees = Employee::where('is_active', true)->orderBy('name')->get();
+
         // Si viene con un client_id preseleccionado (desde la ficha del cliente)
         $selectedClient = null;
         if ($request->filled('client_id')) {
             $selectedClient = Client::find($request->client_id);
         }
 
-        return view('works.create', compact('laboratories', 'clients', 'selectedClient'));
+        return view('works.create', compact('laboratories', 'clients', 'selectedClient', 'employees'));
     }
 
     /**
@@ -94,8 +102,9 @@ class WorkController extends Controller
     {
         // Validar todos los campos del formulario
         $validated = $request->validate([
-            // Cliente
+            // Cliente y vendedora
             'client_id' => 'required|exists:clients,id',
+            'employee_id' => 'required|exists:employees,id',
             
             // Fórmula
             'od_sphere' => 'nullable|numeric',
@@ -124,6 +133,7 @@ class WorkController extends Controller
             'price_lenses' => 'required|numeric|min:0',
             'price_frame' => 'nullable|numeric|min:0',
             'price_consultation' => 'nullable|numeric|min:0',
+            'lab_cost' => 'nullable|numeric|min:0',
             'initial_payment' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|in:cash,card,transfer,nequi,daviplata,other',
             
@@ -135,6 +145,8 @@ class WorkController extends Controller
             'estimated_delivery' => 'nullable|date',
         ], [
             'client_id.required' => 'Selecciona un cliente.',
+            'employee_id.required' => 'Selecciona quién atendió esta venta.',
+            'employee_id.exists' => 'La trabajadora seleccionada no es válida.',
             'lens_type.required' => 'Selecciona el tipo de lente.',
             'lens_material.required' => 'Selecciona el material.',
             'laboratory_id.required' => 'Selecciona un laboratorio.',
@@ -169,6 +181,7 @@ class WorkController extends Controller
             'laboratory_id' => $validated['laboratory_id'],
             'formula_id' => $formula->id,
             'user_id' => Auth::id(),
+            'employee_id' => $validated['employee_id'],
             'status' => 'registered',
             'frame_type' => $validated['frame_type'],
             'frame_brand' => $validated['frame_brand'] ?? null,
@@ -183,6 +196,7 @@ class WorkController extends Controller
             'price_frame' => $priceFrame,
             'price_consultation' => $priceConsultation,
             'price_total' => $priceTotal,
+            'lab_cost' => $validated['lab_cost'] ?? 0,
             'is_urgent' => $request->boolean('is_urgent'),
             'is_vip' => $request->boolean('is_vip'),
             'is_warranty' => $request->boolean('is_warranty'),
@@ -205,6 +219,7 @@ class WorkController extends Controller
             Payment::create([
                 'work_id' => $work->id,
                 'user_id' => Auth::id(),
+                'employee_id' => $validated['employee_id'], // misma vendedora que abrió la venta
                 'amount' => $initialPayment,
                 'method' => $validated['payment_method'] ?? 'cash',
                 'notes' => 'Abono al crear la orden.',
@@ -225,11 +240,13 @@ class WorkController extends Controller
     {
         // Cargar todas las relaciones necesarias
         $work->load([
-            'client', 
-            'laboratory', 
-            'formula', 
+            'client',
+            'laboratory',
+            'formula',
             'user',
+            'employee',                // Vendedora física que atendió la venta
             'payments.user',           // Pagos con el usuario que los registró
+            'payments.employee',       // Vendedora que recibió cada pago
             'statusChanges.user',      // Cambios de estado con quién los hizo
         ]);
 
@@ -277,8 +294,20 @@ class WorkController extends Controller
             'notes' => $validated['notes'] ?? null,
         ]);
 
+        // Enviar email de actualización al cliente (si tiene correo)
+        $emailMsg = '';
+        $work->load('client');
+        if ($work->client->email) {
+            try {
+                Mail::to($work->client->email)->send(new WorkStatusUpdateMail($work));
+                $emailMsg = ' | Notificación enviada a ' . $work->client->email;
+            } catch (\Exception $e) {
+                $emailMsg = ' | No se pudo enviar el correo de notificación';
+            }
+        }
+
         return redirect()->route('works.show', $work)
-            ->with('success', '✅ Estado actualizado a: ' . $work->fresh()->status_name);
+            ->with('success', '✅ Estado actualizado a: ' . $work->fresh()->status_name . $emailMsg);
     }
 
     /**
@@ -290,15 +319,18 @@ class WorkController extends Controller
         $validated = $request->validate([
             'amount' => 'required|numeric|min:1',
             'method' => 'required|in:cash,card,transfer,nequi,daviplata,other',
+            'employee_id' => 'required|exists:employees,id',
             'notes' => 'nullable|string|max:500',
         ], [
             'amount.required' => 'Ingresa el monto del abono.',
             'amount.min' => 'El monto debe ser mayor a $0.',
+            'employee_id.required' => 'Selecciona quién recibió el pago.',
         ]);
 
         Payment::create([
             'work_id' => $work->id,
             'user_id' => Auth::id(),
+            'employee_id' => $validated['employee_id'],
             'amount' => $validated['amount'],
             'method' => $validated['method'],
             'notes' => $validated['notes'] ?? null,
@@ -315,8 +347,11 @@ class WorkController extends Controller
     {
         $work->load(['client', 'laboratory', 'formula', 'payments']);
         $laboratories = Laboratory::where('is_active', true)->get();
+        $employees = Employee::where('is_active', true)
+            ->orWhere('id', $work->employee_id) // siempre incluir la actual aunque esté inactiva
+            ->orderBy('name')->get();
 
-        return view('works.edit', compact('work', 'laboratories'));
+        return view('works.edit', compact('work', 'laboratories', 'employees'));
     }
 
     /**
@@ -332,9 +367,11 @@ class WorkController extends Controller
             'lens_type' => 'required|in:monofocal,bifocal,progressive',
             'lens_material' => 'required|in:cr39,polycarbonate,high_index,trivex',
             'laboratory_id' => 'required|exists:laboratories,id',
+            'employee_id' => 'required|exists:employees,id',
             'price_lenses' => 'required|numeric|min:0',
             'price_frame' => 'nullable|numeric|min:0',
             'price_consultation' => 'nullable|numeric|min:0',
+            'lab_cost' => 'nullable|numeric|min:0',
             'observations' => 'nullable|string|max:1000',
             'is_urgent' => 'nullable|boolean',
             'is_vip' => 'nullable|boolean',
@@ -353,6 +390,7 @@ class WorkController extends Controller
             'lens_type' => $validated['lens_type'],
             'lens_material' => $validated['lens_material'],
             'laboratory_id' => $validated['laboratory_id'],
+            'employee_id' => $validated['employee_id'],
             'treatment_antireflective' => $request->boolean('treatment_antireflective'),
             'treatment_photochromic' => $request->boolean('treatment_photochromic'),
             'treatment_blue_filter' => $request->boolean('treatment_blue_filter'),
@@ -361,6 +399,7 @@ class WorkController extends Controller
             'price_frame' => $priceFrame,
             'price_consultation' => $priceConsultation,
             'price_total' => $priceTotal,
+            'lab_cost' => $validated['lab_cost'] ?? $work->lab_cost,
             'is_urgent' => $request->boolean('is_urgent'),
             'is_vip' => $request->boolean('is_vip'),
             'is_warranty' => $request->boolean('is_warranty'),
@@ -389,5 +428,94 @@ class WorkController extends Controller
 
         return redirect()->route('works.show', $work)
             ->with('success', '✅ Abono de $' . number_format($amount, 0, ',', '.') . ' eliminado correctamente.');
+    }
+
+    /**
+     * Enviar recibo por correo electrónico
+     * Ruta: POST /trabajos/{work}/enviar-recibo
+     */
+    public function sendReceipt(Work $work)
+    {
+        $work->load('client');
+
+        if (!$work->client->email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El cliente no tiene correo electrónico registrado.',
+            ], 422);
+        }
+
+        try {
+            Mail::to($work->client->email)->send(new WorkReceiptMail($work));
+
+            return response()->json([
+                'success' => true,
+                'message' => "Recibo enviado al correo {$work->client->email}",
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo enviar el correo. Verifica la configuración SMTP.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Exportar trabajos a Excel
+     * Ruta: GET /trabajos/exportar
+     */
+    public function export(Request $request)
+    {
+        $filename = 'Trabajos_UniversoVisual_' . now()->format('Y-m-d') . '.xlsx';
+        return Excel::download(new WorksExport($request), $filename);
+    }
+
+    /**
+     * Analizar archivo Excel para importación (sin importar)
+     * Ruta: POST /trabajos/importar/analizar
+     */
+    public function analyzeImport(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls']);
+
+        try {
+            $service = new WorkImportService();
+            $result = $service->loadFile($request->file('file')->getPathname())->analyze();
+            return response()->json(['success' => true, 'data' => $result]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al leer el archivo: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Importar trabajos desde Excel
+     * Ruta: POST /trabajos/importar
+     */
+    public function import(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls']);
+
+        try {
+            $service = new WorkImportService();
+            $result = $service->loadFile($request->file('file')->getPathname())->import();
+
+            $msg = "Se importaron {$result['imported']} trabajo(s).";
+            if ($result['clients_created'] > 0) {
+                $msg .= " Se crearon {$result['clients_created']} cliente(s) nuevo(s).";
+            }
+            if (count($result['errors']) > 0) {
+                $msg .= " " . count($result['errors']) . " fila(s) con errores.";
+            }
+
+            return response()->json(['success' => true, 'message' => $msg, 'data' => $result]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al importar: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

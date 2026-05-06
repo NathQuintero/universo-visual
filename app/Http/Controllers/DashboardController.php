@@ -107,6 +107,43 @@ class DashboardController extends Controller
             ];
         }
 
+        // Alerta: Pagos al laboratorio pendientes (>=15 días sin pagar)
+        $labWorks = Work::with(['statusChanges' => fn($q) => $q->where('to_status', 'received'), 'laboratory'])
+            ->where('status', '!=', 'cancelled')
+            ->whereNull('lab_paid_at')
+            ->get();
+
+        $labOverdue = $labWorks->filter(fn($w) => $w->lab_payment_status === 'overdue');
+        $labDue     = $labWorks->filter(fn($w) => $w->lab_payment_status === 'due');
+        $labDueSoon = $labWorks->filter(fn($w) => $w->lab_payment_status === 'due_soon');
+
+        if ($labOverdue->count() > 0) {
+            $byLab = $labOverdue->groupBy('laboratory.name')->map->count()
+                ->map(fn($c, $name) => "{$c} en {$name}")->values()->implode(', ');
+            $alerts[] = [
+                'type' => 'danger',
+                'icon' => '🔥',
+                'title' => $labOverdue->count() . ' lente(s) FUERA DE PLAZO con el laboratorio',
+                'message' => 'Pasaron 30 días sin pagar — ' . $byLab,
+            ];
+        }
+        if ($labDue->count() > 0) {
+            $alerts[] = [
+                'type' => 'warning',
+                'icon' => '⏰',
+                'title' => $labDue->count() . ' lente(s) +15 días sin pagar al lab',
+                'message' => 'Coordinar pago al laboratorio cuanto antes.',
+            ];
+        }
+        if ($labDueSoon->count() > 0) {
+            $alerts[] = [
+                'type' => 'warning',
+                'icon' => '📅',
+                'title' => $labDueSoon->count() . ' lente(s) próximos a 15 días',
+                'message' => 'Preparar pago al laboratorio en los próximos días.',
+            ];
+        }
+
         // =============================================
         // CUMPLEAÑEROS DE LA SEMANA
         // =============================================

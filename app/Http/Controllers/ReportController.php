@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ReportExport;
 use App\Models\Work;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Laboratory;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * Controlador: Reportes y Estadísticas
@@ -195,5 +197,22 @@ class ReportController extends Controller
         }
 
         return view('reports.daily', compact('summary', 'todayWorks', 'deliveredToday', 'pendingAlerts'));
+    }
+
+    /**
+     * Exportar reporte a Excel
+     * Ruta: GET /reportes/exportar
+     */
+    public function export(Request $request)
+    {
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->start_date)
+            : Carbon::now()->startOfMonth();
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->end_date)
+            : Carbon::now()->endOfMonth();
+
+        $filename = 'Reporte_UniversoVisual_' . now()->format('Y-m-d') . '.xlsx';
+        return Excel::download(new ReportExport($startDate, $endDate), $filename);
     }
 }

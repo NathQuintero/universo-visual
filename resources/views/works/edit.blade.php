@@ -25,6 +25,23 @@
 
         <div class="card" style="margin-bottom:20px">
             <div class="card-b">
+                {{-- VENDEDORA ENCARGADA --}}
+                <div class="fsec-title">👩‍💼 Vendedora Encargada</div>
+                <div class="frow">
+                    <div class="fg">
+                        <label>¿Quién atendió esta venta? *</label>
+                        <select name="employee_id" required>
+                            <option value="">— Selecciona la trabajadora —</option>
+                            @foreach($employees as $emp)
+                                <option value="{{ $emp->id }}" {{ old('employee_id', $work->employee_id) == $emp->id ? 'selected' : '' }}>
+                                    {{ $emp->name }}{{ !$emp->is_active ? ' (inactiva)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('employee_id') <span class="field-error">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
                 {{-- MONTURA Y LENTE --}}
                 <div class="fsec-title">👓 Montura y Lente</div>
                 <div class="frow">
@@ -68,6 +85,24 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+
+                {{-- COSTO AL LABORATORIO --}}
+                <div class="fsec-title">🏭 Costo al Laboratorio</div>
+                <div class="frow">
+                    <div class="fg">
+                        <label>Costo del lente (lo que cobra el lab)</label>
+                        <input name="lab_cost" type="number" step="1" min="0" value="{{ old('lab_cost', $work->lab_cost) }}" placeholder="80000">
+                        <p style="font-size:11px;color:var(--text-muted);margin-top:4px">
+                            @if($work->is_lab_paid)
+                                ✅ Ya pagado al lab el {{ $work->lab_paid_at->format('d/m/Y') }}
+                            @elseif($work->lab_received_at)
+                                ⏰ Llevamos {{ $work->days_owed_to_lab }} día(s) sin pagar al lab
+                            @else
+                                Aún no recibido del lab
+                            @endif
+                        </p>
                     </div>
                 </div>
 
@@ -125,7 +160,7 @@
                     <label style="display:flex;align-items:center;gap:5px;background:rgba(255,193,7,0.06);padding:7px 12px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid rgba(255,193,7,0.15);color:var(--yellow)">
                         <input type="checkbox" name="is_vip" value="1" {{ old('is_vip', $work->is_vip) ? 'checked' : '' }}> ⭐ VIP
                     </label>
-                    <label style="display:flex;align-items:center;gap:5px;background:rgba(124,91,245,0.06);padding:7px 12px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid rgba(124,91,245,0.15);color:var(--purple)">
+                    <label style="display:flex;align-items:center;gap:5px;background:rgba(26,79,208,0.06);padding:7px 12px;border-radius:var(--r);font-size:13px;cursor:pointer;border:1px solid rgba(26,79,208,0.15);color:var(--purple)">
                         <input type="checkbox" name="is_warranty" value="1" {{ old('is_warranty', $work->is_warranty) ? 'checked' : '' }}> 🔄 Garantía
                     </label>
                 </div>

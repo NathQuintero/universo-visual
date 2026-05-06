@@ -10,10 +10,10 @@
 @section('styles')
 <style>
     .lab-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .lab { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-md); padding: 20px; transition: var(--fast); }
-    .lab:hover { border-color: var(--purple); transform: translateY(-2px); }
+    .lab { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-md); padding: 20px; transition: var(--fast); display: block; text-decoration: none; color: inherit; cursor: pointer; }
+    .lab:hover { border-color: var(--purple); transform: translateY(-2px); box-shadow: var(--shadow-md); }
     .lab-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-    .lab-icon { width: 44px; height: 44px; border-radius: var(--r); background: rgba(124,91,245,0.1); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .lab-icon { width: 44px; height: 44px; border-radius: var(--r); background: rgba(26,79,208,0.08); display: flex; align-items: center; justify-content: center; font-size: 20px; }
     .lab-name { font-size: 15px; font-weight: 700; }
     .lab-contact { font-size: 11px; color: var(--text-muted); }
     .lab-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -66,7 +66,7 @@
                 $avgDays = $lab->averageDeliveryDays();
                 $compliance = $lab->complianceRate();
             @endphp
-            <div class="lab">
+            <a href="{{ route('laboratories.show', $lab) }}" class="lab">
                 <div class="lab-top">
                     <div class="lab-icon">🔬</div>
                     <div>
@@ -92,7 +92,8 @@
                         <div class="l">Cumplimiento</div>
                     </div>
                 </div>
-            </div>
+                <div style="margin-top:12px;text-align:center;font-size:11px;color:var(--blue);font-weight:600">📋 Ver lentes y pagos →</div>
+            </a>
         @endforeach
     </div>
 @endsection
