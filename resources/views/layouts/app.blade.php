@@ -1117,10 +1117,9 @@
                 <span class="sb-icon">🏭</span> Laboratorios
             </a>
 
-            <div class="sb-label">Análisis</div>
-
-            {{-- Reportes: solo visible para admin --}}
             @if(Auth::user()->isAdmin())
+                <div class="sb-label">Análisis</div>
+
                 <a href="{{ route('reports.index') }}"
                    class="sb-item {{ request()->routeIs('reports.*') ? 'active' : '' }}"
                    onclick="closeSidebarMobile()">
@@ -1137,6 +1136,20 @@
                    class="sb-item {{ request()->routeIs('employees.*') ? 'active' : '' }}"
                    onclick="closeSidebarMobile()">
                     <span class="sb-icon">👩‍💼</span> Trabajadoras
+                </a>
+            @else
+                <div class="sb-label">Alertas</div>
+
+                <a href="{{ route('alerts.index') }}"
+                   class="sb-item {{ request()->routeIs('alerts.*') ? 'active' : '' }}"
+                   onclick="closeSidebarMobile()">
+                    <span class="sb-icon">🔔</span> Alertas
+                    @php
+                        $alertsCount = \App\Http\Controllers\DashboardController::alertsCountFor(Auth::user());
+                    @endphp
+                    @if($alertsCount > 0)
+                        <span class="sb-badge">{{ $alertsCount }}</span>
+                    @endif
                 </a>
             @endif
 

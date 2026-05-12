@@ -61,6 +61,9 @@ Route::middleware(['auth'])->group(function () {
     // =============================================
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Página completa de alertas (con botones y detalle por alerta)
+    Route::get('/alertas', [DashboardController::class, 'alerts'])->name('alerts.index');
+
     // =============================================
     // TRABAJOS — Acceso: admin y seller
     // =============================================
