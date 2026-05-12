@@ -17,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Confiar en el proxy de Render (X-Forwarded-Proto = https, etc.)
+        // Necesario para que Auth, URL::current() y los enlaces generados
+        // usen el esquema https detrás del balanceador.
+        $middleware->trustProxies(at: '*');
+
         // Registrar middleware de roles: ->middleware('role:admin')
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,

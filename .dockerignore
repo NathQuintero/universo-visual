@@ -1,0 +1,49 @@
+# Git / IDE
+.git
+.gitignore
+.gitattributes
+.editorconfig
+.idea
+.vscode
+.fleet
+.nova
+.zed
+
+# Claude / agents (config local, no va al contenedor)
+.claude
+.agents
+skills-lock.json
+CLAUDE.md
+
+# Dependencias que se reinstalan dentro del build
+vendor
+node_modules
+public/build
+public/hot
+
+# Entornos locales / secretos
+.env
+.env.backup
+.env.production
+auth.json
+
+# Tests / herramientas locales
+/tests
+phpunit.xml
+/.phpunit.cache
+.phpunit.result.cache
+.phpactor.json
+
+# Storage runtime
+storage/logs/*.log
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/pail
+storage/*.key
+database/database.sqlite
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log

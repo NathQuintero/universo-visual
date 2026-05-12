@@ -1,0 +1,74 @@
+# =========================================================================
+# Blueprint de Render para Universo Visual
+# =========================================================================
+# Para usarlo:
+#   1. Subir el repo a GitHub.
+#   2. En Render → New + → Blueprint → conectar el repo.
+#   3. Render detectará este archivo y creará: web service + Postgres.
+#
+# Si preferís configurar manualmente, podés borrar este archivo y crear
+# el Web Service desde el panel siguiendo el Dockerfile.
+# =========================================================================
+
+databases:
+  - name: universo-visual-db
+    plan: free
+    databaseName: universo_visual
+    user: universo_visual
+
+services:
+  - type: web
+    name: universo-visual
+    runtime: docker
+    plan: free
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: "Universo Visual"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        sync: false   # tras el primer deploy, poner aquí https://<tu-app>.onrender.com
+      - key: APP_LOCALE
+        value: es
+      - key: APP_FALLBACK_LOCALE
+        value: es
+      - key: APP_FAKER_LOCALE
+        value: es_ES
+      - key: LOG_CHANNEL
+        value: stack
+      - key: LOG_STACK
+        value: single
+      - key: LOG_LEVEL
+        value: error
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: universo-visual-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: "120"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: MAIL_MAILER
+        value: log
+      - key: VITE_APP_NAME
+        value: "Universo Visual"
+      # En el primer deploy poné SEED_ON_BOOT=true para sembrar datos.
+      # Después borrá esta env var para que no reseed en cada arranque.
+      - key: SEED_ON_BOOT
+        value: "false"
